@@ -17,7 +17,7 @@ function init() {
     z: 10,
     nRow: 6, /* ブロックの行数 */
     nCol: 9, /* ブロックの列数 */
-    axes: true,
+    axes: false,
   };
 
   // シーン作成
@@ -34,6 +34,8 @@ function init() {
   let score = 0;
   let life = 3;
   function setScore(score) {
+     document.getElementById("score").innerText= String(Math.round(score)).padStart(8,"0");
+     document.getElementById("life").innerText = (life > 0) ? "〇〇〇".substring(0, life) : "--- Game Over---";
   }
 
   // Geometry の分割数
@@ -47,6 +49,7 @@ function init() {
     new THREE.SphereGeometry(ballR, nSeg, nSeg),
     new THREE.MeshPhongMaterial({ color: 0x808080, shininess: 100, specular: 0xa0a0a0 })
   );
+  ball.geometry.computeBoundingSphere();
   scene.add(ball);
 
   // ボールの移動
@@ -58,12 +61,12 @@ function init() {
     if (ballLive){
     vBall.set(vx, 0, vz)
     ball.position.addScaledVector(vBall, delta * speed);
+    }
+    else { 
+    ball.position.x = paddle.position.x
+    ball.position.z = paddle.position.z- (ballR + paddleR)
+    }
   }
-  else {
-    ball.position.x = paddle.position.x;
-    ball.position.z = paddle.position.z - (ballR + paddleR) ;
-  }
-}
 
   // ボールの死活
   let ballLive = false;
@@ -71,14 +74,19 @@ function init() {
 
   // ボールを停止する
   function stopBall() {
-    speed = 0;
-    ballLive = false;
+  speed = 0;
+  ballLive = false;
+  life = life -1;
   }
 
   // ボールを動かす
   function startBall() {
     ballLive = true;
     speed = 10;
+    if (life <= 0) {
+      life = 3;
+      resetBrick();
+    }
   }
 
   // マウスクリックでスタートする
@@ -108,21 +116,19 @@ function init() {
       new THREE.BoxGeometry(vFrameW, vFrameH, vFrameD),
       new MeshPhongMaterial({ color: 0xB3B3B3 })
     );
-    lFrame.position.x = (hFrameW / 2 - vFrameW/2);
+    lFrame.position.x = (hFrameW/2 - vFrameW/2);
     scene.add(lFrame);
-
     //   右の枠
-    const rFrame = lFrame.clone();   
-    rFrame.position.x = -(hFrameW / 2 - vFrameW/2);
+    const rFrame = lFrame.clone();
+    rFrame.position.x = -(hFrameW/2 - vFrameW/2);
     scene.add(rFrame);
-
   }
 
   // 壁で反射させる
   const hLimit = hFrameW / 2 - vFrameW;
   const vLimit = vFrameD / 2;
+  // 右
   function frameCheck() {
-    //　右
     if (ball.position.x + ballR > hLimit) {
       ball.position.x = hLimit - ballR;
       vx = -Math.abs(vx);
@@ -132,6 +138,7 @@ function init() {
       ball.position.x = -(hLimit - ballR);
       vx = Math.abs(vx);
     }
+
     // 上
     if (-ball.position.z + ballR > vLimit) {
       ball.position.z = -(vLimit - ballR);
@@ -139,13 +146,11 @@ function init() {
     }
     // 下
     if (ball.position.z + ballR > vLimit) {
-      /*ball.position.z = vLimit - ballR;
-      vz = -Math.abs(vz);*/
+      // ball.position.z = vLimit - ballR;
+      // vz = -Math.abs(vz);
       stopBall();
-    }
-
   }
-
+  }
   // パドル ーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーー
   // パドルの作成
   const paddleR = 0.3;
@@ -157,10 +162,8 @@ function init() {
       new THREE.CylinderGeometry(paddleR, paddleR, paddleL, nSeg),
       new THREE.MeshPhongMaterial({ color: 0x333333, shininess: 100, specular: 0x404040 })
     );
-    center.rotation.z = Math.PI / 2;
+    center.rotation.z = Math.PI/2;
     paddle.add(center);
-
-
     // パドル端
     const sideGeometry
       = new THREE.SphereGeometry(paddleR, nSeg, nSeg, Math.PI / 2, Math.PI);
@@ -171,18 +174,17 @@ function init() {
       new THREE.SphereGeometry(paddleR, nSeg, nSeg, Math.PI / 2, Math.PI),
       new THREE.MeshPhongMaterial({ color: 0x666666, shininess: 100, specular: 0xa0a0a0 })
     );
-    right.position.x = paddleL / 2;
+    right.position.x = paddleL/2;
     paddle.add(right);
 
     // パドル端(左)
     const left = right.clone();
     left.rotation.z = Math.PI;
-    left.position.x = -paddleL / 2;
+    left.position.x = -paddleL/2;
     paddle.add(left);
-
     // パドルの配置
-    paddle.position.z = 0.4 * vFrameD;
-    scene.add(paddle)
+    paddle.position.z = 0.4*vFrameD;
+    scene.add(paddle);
   }
   
 
@@ -194,13 +196,12 @@ function init() {
     const intersects = new THREE.Vector3();
     function paddleMove(event) {
       mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-      raycaster.setFromCamera(mouse, camera);
-      raycaster.ray.intersectPlane(plane, intersects);
-      const offset = hFrameW / 2 - vFrameW - paddleL / 2 - paddleR;
-      if (intersects.x < -offset){
+      raycaster.setFromCamera(mouse,camera);
+      raycaster.ray.intersectPlane(plane,intersects);
+      const offset = hFrameW/2 - vFrameW - paddleL / 2 - paddleR
+      if (intersects.x < -offset) {
         intersects.x = -offset;
-      }
-      else if (intersects.x > offset){
+      } else if (intersects.x > offset) {
         intersects.x = offset;
       }
       paddle.position.x = intersects.x;
@@ -211,25 +212,23 @@ function init() {
 
   // パドルの衝突検出
   function paddleCheck() {
-    if (Math.abs(ball.position.z - paddle.position.z) < paddleR + ballR &&
-        Math.abs(ball.position.x - paddle.position.x) < paddleL / 2 + ballR){
-      if (ball.position.z < paddle.position.z){
-        vz = -Math.abs(vz);
-      }
-      if (ball.position.x > paddle.position.x + paddleL / 2){
-        vx = Math.abs(vx);
-      }
-      else if (ball.position.x < -paddle.position.x + paddleL / 2){
-        vx = -Math.abs(vx);
+  if ( Math.abs(ball.position.z - paddle.position.z) < paddleR + ballR &&Math.abs(ball.position.x - paddle.position.x) < paddleL/2 + ballR) {
 
-      }
+    if (ball.position.z < paddle.position.z) {
+      vz = -Math.abs(vz);
     }
+    if (ball.position.x > paddle.position.x + paddleL/2) {
+      vx = Math.abs(vx);
+    }else if (ball.position.x < paddle.position.x - paddleL/2)
+      vx = -Math.abs(vx);
+  }
   }
 
   // ブロック ーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーー
   // ブロックの生成
   const bricks = new THREE.Group();
-  {
+  function makeBricks() {
+    
     const color = ["white", "red", "yellow", "blue", "purple", "green"];
     const h = 0.8; /* ブロックの高さ */
     const d = 0.4; /* ブロックの奥行 */
@@ -239,23 +238,66 @@ function init() {
     // ブロックの幅
     const w = (hFrameW - 2 * vFrameW - (param.nCol + 1) * gapX) / param.nCol;
     // ブロックを並べる
-
+    for ( let r = 0; r < param.nRow; r++) {
+      for (let c = 0; c < param.nCol; c++) {
+        const brick = new THREE.Mesh(
+        new THREE.BoxGeometry(w , h, d ),
+        new THREE.MeshLambertMaterial({color: color[r % color.length]})
+        );
+        brick.position.set(
+          (w + gapX) * (c-(param.nCol-1)/2),
+          0,
+          -(d+gapZ) * r
+        )
+        brick.geometry.computeBoundingBox();
+        bricks.add(brick);
+        nBrick++;
+      }
+    }
     // ブロック全体を奥に移動する
-
-  }
+    bricks.position.z = -4;
+    scene.add(bricks);
+  } 
+    makeBricks();
 
   // ブロックの衝突検出
   function brickCheck() {
     let hit = false;
-
+    const sphere = ball.geometry.boundingSphere.clone();
+    sphere.translate(ball.position);
     bricks.children.forEach((brick) => {
+      if (!hit && brick.visible) {
+        let box = brick.geometry.boundingBox.clone();
+        box.translate(bricks.position);
+        box.translate(brick.position);
+        if (box.intersectsSphere(sphere)) {
+          hit = true;
+          brick.visible = false;
+          score += (-brick.position.z/0.7  +1) * 100;
+          nBrick--;
+          vz = -vz;
+        }
+      }
     });
+  }
+  //ブロックの作り直し
+  function remakeBricks() {
+    stopBall();
+    scene.remove(bricks);
+    bricks.clear();
+    nBrick = 0;
+    makeBricks();
+    scene.add(bricks);
   }
 
 
   // ブロックの再表示
   function resetBrick() {
-
+     nBrick = 0;
+     bricks.children.forEach((brick) => {
+      brick.visible = true;
+      nBrick++;
+     })
   }
 
   // 光源の設定
@@ -305,6 +347,8 @@ function init() {
   gui.add(param, "y", -40, 80);
   gui.add(param, "z", -40, 80);
   gui.add(param, "axes");
+  gui.add(param,"nRow" , 1, 10, 1).onChange(remakeBricks);
+  gui.add(param,"nCol" , 1, 10, 1).onChange(remakeBricks);
   gui.close();
   // 描画
   render();
